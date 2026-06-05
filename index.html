@@ -1087,7 +1087,7 @@ function renderCal() {
   const dates=weekDates(S.woff);
   const w=isoWeek(dates[0]);
   g("lbl-week").textContent=`Tuần ${w}/${dates[0].getFullYear()}`;
-  g("lbl-range").textContent=`${viD(toDS(dates[0]))} – ${viD(toDS(dates[6]))}`;
+  g("lbl-range").textContent = `${viD(toDS(dates[0]))} – ${viD(toDS(dates[6]))}`;
   renderLeaderFilters(); renderFormLeaderDropdown(); renderLeaderSoloFilter();
   buildTimeGutter(); buildDayHeads(dates);
   const dc=g("day-cols"); dc.innerHTML="";
