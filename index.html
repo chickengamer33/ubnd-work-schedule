@@ -104,6 +104,39 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .cal-day-head .dd span{font-size:13px;font-weight:600;color:var(--text);border-radius:999px;padding:2px 8px;display:inline-block}
 .cal-day-head.today .dn{color:var(--primary)}
 .cal-day-head.today .dd span{background:var(--primary);color:white}
+.cal-day-head.weekend{background:rgba(11,79,138,.06);}
+.day-col.weekend-empty{opacity:.92;}
+.weekend-off{
+  position:absolute;
+  left:6px; right:6px;
+  border:1px dashed rgba(11,79,138,.35);
+  background:rgba(255,255,255,.92);
+  border-radius:12px;
+  color:var(--text3);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+  pointer-events:none;
+  text-transform:uppercase;
+}
+.weekend-full-rest{
+  position:absolute;
+  left:8px; right:8px; top:8px; bottom:8px;
+  background:rgba(255,255,255,.9);
+  border:1px dashed rgba(11,79,138,.35);
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--text3);
+  font-size:13px;
+  font-weight:700;
+  pointer-events:none;
+  text-transform:uppercase;
+}
+
 #cal-scroll{flex:1;overflow-y:auto;overflow-x:hidden}
 #cal-body{display:flex;min-height:calc(var(--pph) * 10)}
 .time-gutter{width:var(--tcw);flex-shrink:0;border-right:1px solid var(--border);position:relative;height:calc(var(--pph) * 10)}
@@ -682,7 +715,7 @@ const ROLES = {
   staff:  { canAdd:1, canApprove:0, manageUsers:0, autoApprove:0, seeAll:0 },
   viewer: { canAdd:0, canApprove:0, manageUsers:0, autoApprove:0, seeAll:0 }
 };
-const VDAYS = ["Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6"];
+const VDAYS = ["Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7","Chủ nhật"];
 
 // ─── STATE ───────────────────────────────────────────
 let S = { user:null, woff:0, events:{}, users:{}, editId:null, sfilt:"all", leaderFilt:null };
@@ -756,7 +789,12 @@ function weekDates(off=0) {
   const t=new Date(), dow=t.getDay();
   const mon=new Date(t);
   mon.setDate(t.getDate()+(dow===0?-6:1-dow)+off*7);
-  return Array.from({length:5},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+  return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+}
+const isWeekend = ds => {
+  const d = new Date(ds);
+  const day = d.getDay();
+  return day === 0 || day === 6;
 }
 
 // ─── DEFAULT DATA ─────────────────────────────────────
@@ -937,14 +975,15 @@ function buildDayHeads(dates) {
   const dh=g("day-heads"); dh.innerHTML="";
   dates.forEach((d,i) => {
     const ds=toDS(d), el=document.createElement("div");
-    el.className="cal-day-head"+(isToday(ds)?" today":"");
+    el.className="cal-day-head"+(isToday(ds)?" today":"")+(isWeekend(ds)?" weekend":"");
     el.innerHTML=`<div class="dn">${VDAYS[i]}</div><div class="dd"><span>${viDS(ds)}</span></div>`;
     dh.appendChild(el);
   });
 }
 function buildDayCol(date, evts) {
   const ds=toDS(date), col=document.createElement("div");
-  col.className="day-col"; col.dataset.date=ds;
+  col.className="day-col"+(isWeekend(ds)?" weekend":"");
+  col.dataset.date=ds;
   col.style.height=GRID_H+"px";
   // Hour & half-hour lines
   for(let h=DAY_S; h<=DAY_E; h++) {
@@ -962,8 +1001,39 @@ function buildDayCol(date, evts) {
   lz.style.height=durPx("11:30","13:30")+"px";
   lz.innerHTML='<span class="lunch-label">☕ Nghỉ trưa</span>';
   col.appendChild(lz);
+
+  const isWknd = isWeekend(ds);
+  if(isWknd) {
+    if(!evts.length) {
+      col.classList.add("weekend-empty");
+      const full = document.createElement("div");
+      full.className="weekend-full-rest";
+      full.textContent="Ngày nghỉ";
+      col.appendChild(full);
+    } else {
+      const hasMorning = evts.some(e => tM(e.startTime) < tM("12:00") && tM(e.endTime) > tM("07:00"));
+      const hasAfternoon = evts.some(e => tM(e.startTime) < tM("17:00") && tM(e.endTime) > tM("12:00"));
+      if(!hasMorning){
+        const off = document.createElement("div");
+        off.className = "weekend-off";
+        off.style.top = tPx("07:00") + "px";
+        off.style.height = durPx("07:00","12:00") + "px";
+        off.textContent = "Sáng nghỉ";
+        col.appendChild(off);
+      }
+      if(!hasAfternoon){
+        const off = document.createElement("div");
+        off.className = "weekend-off";
+        off.style.top = tPx("12:00") + "px";
+        off.style.height = durPx("12:00","17:00") + "px";
+        off.textContent = "Chiều nghỉ";
+        col.appendChild(off);
+      }
+    }
+  }
+
   // Events
-  if(evts.length) assignCols(evts).forEach(e=>col.appendChild(buildEvtEl(e)));
+  if(evts.length) assignCols(evts).forEach(e => col.appendChild(buildEvtEl(e)));
   return col;
 }
 function buildEvtEl(e) {
@@ -1017,7 +1087,7 @@ function renderCal() {
   const dates=weekDates(S.woff);
   const w=isoWeek(dates[0]);
   g("lbl-week").textContent=`Tuần ${w}/${dates[0].getFullYear()}`;
-  g("lbl-range").textContent=`${viD(toDS(dates[0]))} – ${viD(toDS(dates[4]))}`;
+  g("lbl-range").textContent=`${viD(toDS(dates[0]))} – ${viD(toDS(dates[6]))}`;
   renderLeaderFilters(); renderFormLeaderDropdown(); renderLeaderSoloFilter();
   buildTimeGutter(); buildDayHeads(dates);
   const dc=g("day-cols"); dc.innerHTML="";
