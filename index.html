@@ -63,6 +63,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 :root[data-theme="dark"] .da-btn:hover{background:var(--primary);color:white;border-color:var(--primary)}
 :root[data-theme="dark"] .lsb.lsb-apply{background:var(--primary);color:white;border-color:var(--primary)}
 :root[data-theme="dark"] .lsb.lsb-reset:hover{background:var(--surface2);color:var(--text)}
+:root[data-theme="dark"] #cal-header{border-bottom-color:rgba(148,163,184,.22)}
+:root[data-theme="dark"] .cal-time-gutter-head,
+:root[data-theme="dark"] .time-gutter{border-right-color:rgba(148,163,184,.18)}
+:root[data-theme="dark"] .cal-day-head,
+:root[data-theme="dark"] .day-col{border-left-color:rgba(148,163,184,.16)}
+:root[data-theme="dark"] .hl{border-top-color:rgba(148,163,184,.18)}
+:root[data-theme="dark"] .hhl{border-top-color:rgba(148,163,184,.09)}
+:root[data-theme="dark"] .lunch-zone,
+:root[data-theme="dark"] .evening-zone{border-top-color:rgba(148,163,184,.20);border-bottom-color:rgba(148,163,184,.20)}
 
 /* ===================== LOGIN SCREEN ===================== */
 #login-screen{position:fixed;inset:0;background:var(--primary);display:flex;align-items:center;justify-content:center;z-index:9999}
@@ -215,11 +224,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;ba
 .ev:hover{opacity:.88;box-shadow:0 4px 12px rgba(0,0,0,.2);transform:translateY(-1px)}
 /* event colors set via inline style from LEADERS data */
 .ev.pending{opacity:.72;outline:2px dashed rgba(255,255,255,.6);outline-offset:-3px}
+.ev.has-qr{padding-right:66px}
 .ev-time{font-size:10.5px;opacity:.85;font-weight:500}
 .ev-title{font-size:12px;font-weight:700;line-height:1.3;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev-loc{font-size:10.5px;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .ev-badge{display:inline-block;background:rgba(255,255,255,.22);border-radius:4px;font-size:10px;padding:1px 5px;margin-top:2px}
 .ev-staff{font-size:10.5px;opacity:.8}
+.ev-qr{position:absolute;right:5px;top:5px;width:56px;height:56px;background:#fff;border-radius:5px;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
+.ev-qr canvas,.ev-qr img{display:block!important;width:50px!important;height:50px!important}
+.ev-qr-fallback{font-size:9px;line-height:1;color:#0b4f8a;font-weight:800}
 
 /* ===================== MODALS ===================== */
 .overlay{position:fixed;inset:0;background:rgba(12,24,50,.55);display:flex;align-items:flex-start;justify-content:center;z-index:1000;padding:24px 16px;overflow-y:auto;backdrop-filter:blur(2px)}
@@ -1161,6 +1174,37 @@ function buildDayCol(date, evts) {
   if(evts.length) assignCols(evts).forEach(e => col.appendChild(buildEvtEl(e)));
   return col;
 }
+function qrText(evt) {
+  const ld = LEADERS[evt.leader] || { name:"?" };
+  return [
+    evt.title,
+    "Lãnh đạo: " + ld.name,
+    "Ngày: " + viD(evt.date),
+    "Giờ: " + evt.startTime + " - " + evt.endTime,
+    "Địa điểm: " + (evt.location||"—"),
+    evt.attendees ? "Thành phần: " + evt.attendees.substring(0,80) : "",
+    evt.staff ? "CV: " + evt.staff : ""
+  ].filter(Boolean).join("\n");
+}
+function renderMiniQR(target, evt, size=50) {
+  target.innerHTML = "";
+  if(typeof QRCode === "undefined"){
+    target.innerHTML = '<span class="ev-qr-fallback">QR</span>';
+    return;
+  }
+  try {
+    new QRCode(target, {
+      text: qrText(evt),
+      width: size,
+      height: size,
+      colorDark:"#0b4f8a",
+      colorLight:"#ffffff",
+      correctLevel:QRCode.CorrectLevel.M
+    });
+  } catch(err) {
+    target.innerHTML = '<span class="ev-qr-fallback">QR</span>';
+  }
+}
 function buildEvtEl(e) {
   const el=document.createElement("div");
   const ld=LEADERS[e.leader]||{color:"#6b7280",name:"?"};
@@ -1176,6 +1220,14 @@ function buildEvtEl(e) {
   if(e.status==="pending") html+=`<span class="ev-badge">⏳ Chờ duyệt</span>`;
   if(e.invitationFile) html+=`<span class="ev-badge" title="Có giấy mời đính kèm">📎</span>`;
   el.innerHTML=html;
+  if(h >= 82){
+    el.classList.add("has-qr");
+    const qr=document.createElement("div");
+    qr.className="ev-qr";
+    qr.title="Mã QR thông tin lịch";
+    el.appendChild(qr);
+    renderMiniQR(qr, e);
+  }
   el.onclick=()=>openDetail(e.id);
   return el;
 }
