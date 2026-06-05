@@ -1009,6 +1009,34 @@ function buildDayCol(date, evts) {
     col.appendChild(lz);
   }
 
+  // Weekend full rest or partial rest
+  if (isWknd) {
+    if (!evts.length) {
+      col.classList.add("weekend-empty");
+      const full = document.createElement("div");
+      full.className = "weekend-full-rest";
+      full.textContent = "Ngày nghỉ";
+      col.appendChild(full);
+    } else {
+      if (!hasMorning) {
+        const off = document.createElement("div");
+        off.className = "weekend-off";
+        off.style.top = tPx("07:00") + "px";
+        off.style.height = durPx("07:00", "12:00") + "px";
+        off.textContent = "Sáng nghỉ";
+        col.appendChild(off);
+      }
+      if (!hasAfternoon) {
+        const off = document.createElement("div");
+        off.className = "weekend-off";
+        off.style.top = tPx("12:00") + "px";
+        off.style.height = durPx("12:00", "17:00") + "px";
+        off.textContent = "Chiều nghỉ";
+        col.appendChild(off);
+      }
+    }
+  }
+
   // Events
   if(evts.length) assignCols(evts).forEach(e => col.appendChild(buildEvtEl(e)));
   return col;
